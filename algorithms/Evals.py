@@ -56,6 +56,8 @@ def set_exp(exps, exp_name = "activation", deep = False, bn = True):
             nn = set_nn(bn=exp)
         elif exp_name == "weight_decay":
             nn = set_nn(weight_decay=exp, opt = ["Adam", [0.9, 0.99]], act = "leaky_relu", keeprob=0.8)
+        elif exp_name == "best_model":
+            nn = set_nn(weight_decay=0, opt=["Adam", [0.9, 0.99]], act="leaky_relu", keeprob=0.8)
 
         nn_list.append(nn)
         hyperparams.append(exp)
@@ -104,7 +106,7 @@ def set_nn(lr = 0.01, batch = 128, act = "relu", opt = ["Momentum", [0.9, 0]],
 
 # Run the experiment
 def run_exp(data = Data(), epochs = 5, exp_dict = None,
-            plot = True, metric = "all"):
+            plot = True, metric = "all", best_model=False):
     '''
     Run the experiment with the given hyperparameters and neural networks.
     '''
@@ -129,41 +131,57 @@ def run_exp(data = Data(), epochs = 5, exp_dict = None,
     y_train = data.train_label
     X_valid = data.validation_data
     y_valid = data.validation_label
+    X_test = data.test_data
+    y_test = data.test_label
 
     for nn, hyperparam in zip(nns, hyperparams):
         print(f"-----------------Running: {hyperparam}----------------------")
         train_loss,time = nn.fit(X_train, y_train, epochs= epochs)
         loss.append(train_loss)
-
-        acc = nn.evaluate(X_train, y_train)
-        train_acc.append(acc)
-
-        v_acc = nn.evaluate(X_valid, y_valid)
-        valid_acc.append(v_acc)
         
         y_pred_train = np.argmax(nn.predict(X_train), axis=1)
         y_train_transformed = np.argmax(y_train, axis=1)
         y_pred_valid = np.argmax(nn.predict(X_valid), axis=1)
         y_valid_transformed = np.argmax(y_valid, axis=1)
+        y_pred_test = np.argmax(nn.predict(X_test), axis=1)
+        y_test_transformed = np.argmax(y_test, axis=1)
         
+        acc = nn.evaluate(X_train, y_train)
         precision = precision_score(y_train_transformed, y_pred_train, average='macro')
         recall = recall_score(y_train_transformed, y_pred_train, average='macro')
         f1 = f1_score(y_train_transformed, y_pred_train, average='macro')
         
+        train_acc.append(acc)
         train_precision.append(precision)
         train_recall.append(recall)
         train_f1.append(f1)
         
-        v_precision = precision_score(y_valid_transformed, y_pred_valid, average='macro')
-        v_recall = recall_score(y_valid_transformed, y_pred_valid, average='macro')
-        v_f1 = f1_score(y_valid_transformed, y_pred_valid, average='macro')
+        if best_model==False:
+            v_acc = nn.evaluate(X_valid, y_valid)
+            v_precision = precision_score(y_valid_transformed, y_pred_valid, average='macro')
+            v_recall = recall_score(y_valid_transformed, y_pred_valid, average='macro')
+            v_f1 = f1_score(y_valid_transformed, y_pred_valid, average='macro')
+        else:
+            v_acc = nn.evaluate(X_test, y_test)
+            v_precision = precision_score(y_test_transformed, y_pred_test, average='macro')
+            v_recall = recall_score(y_test_transformed, y_pred_test, average='macro')
+            v_f1 = f1_score(y_test_transformed, y_pred_test, average='macro')
         
+        valid_acc.append(v_acc)
         valid_precision.append(v_precision)
         valid_recall.append(v_recall)
         valid_f1.append(v_f1)
         times.append(time)
-    
-    eval_dict = {"loss": loss, "train_acc": train_acc, "valid_acc": valid_acc, "train_precision": train_precision, "valid_precision": valid_precision, "train_recall": train_recall, "valid_recall": valid_recall, "train_f1": train_f1, "valid_f1": valid_f1, "times": times}
+    if best_model==False:
+        eval_dict = {"loss": loss, "train_acc": train_acc, "valid_acc": valid_acc, 
+                     "train_precision": train_precision, "valid_precision": valid_precision, 
+                     "train_recall": train_recall, "valid_recall": valid_recall, 
+                     "train_f1": train_f1, "valid_f1": valid_f1, "times": times}
+    else:
+        eval_dict = {"loss": loss, "train_acc": train_acc, "test_acc": valid_acc, 
+                     "train_precision": train_precision, "test_precision": valid_precision, 
+                     "train_recall": train_recall, "test_recall": valid_recall, 
+                     "train_f1": train_f1, "test_f1": valid_f1, "times": times}
 
     eval_df = pd.DataFrame(eval_dict)
     eval_df.insert(0, "Hyperparameters", hyperparams, True)
