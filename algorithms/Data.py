@@ -20,10 +20,10 @@ class Data:
     '''
 
     # Config the data path
-    train_data_path = '../' + path + '/train_data.npy'
-    train_label_path = '../' + path + '/train_label.npy'
-    test_data_path = '../' + path + '/test_data.npy'
-    test_label_path = '../' + path + '/test_label.npy'
+    train_data_path = path + '/train_data.npy'
+    train_label_path = path + '/train_label.npy'
+    test_data_path = path + '/test_data.npy'
+    test_label_path = path + '/test_label.npy'
 
     # Assignments
     X = np.load(train_data_path)
