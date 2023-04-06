@@ -4,7 +4,7 @@ Authors: Yanming Guo, Yongjiang Shi
 Description: Deal with the input data in npy format,
              also with some processing method.
 """
-from sklearn.preprocessing import StandardScaler
+
 import numpy as np
 import os
 
@@ -52,10 +52,12 @@ class Data:
 
 
   def standardization(self):
-    scaler = StandardScaler()
-    self.train_data = scaler.fit_transform(self.train_data_unstandardized)
-    self.validation_data = scaler.transform(self.validation_data_unstandardized)
-    self.test_data = scaler.transform(self.test_data_unstandardized)
+    mean = np.mean(self.train_data_unstandardized, axis=0)
+    std = np.std(self.train_data_unstandardized, axis=0)
+
+    self.train_data = (self.train_data_unstandardized - mean) / std
+    self.validation_data = (self.validation_data_unstandardized - mean) / std
+    self.test_data = (self.test_data_unstandardized - mean) / std
 
 
   def print_shapes(self):
